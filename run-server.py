@@ -138,6 +138,6 @@ if __name__ == "__main__":
            "please wait until server has fully started"))
  
     # Run app
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=80)
 
     # print(text_generator('豬肉')[0])

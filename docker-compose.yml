@@ -1,0 +1,11 @@
+version: "3.7"
+services:
+  web:
+    container_name: gpt2zh-web
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT:?}:80"
+    environment:
+      - GPT2_LENGTH=${GPT2_LENGTH}

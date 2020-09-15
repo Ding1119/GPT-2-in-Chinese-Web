@@ -4,7 +4,7 @@ import torch
 import random
 import numpy as np
 from utils import header, add_content, box
-from wtforms import Form, TextField, validators, SubmitField
+from wtforms import Form, TextField, IntegerField, DecimalField, BooleanField, validators, SubmitField
 import torch
 import torch.nn.functional as F
 import os
@@ -16,11 +16,9 @@ import generate
 # copied from generate.py
 parser = argparse.ArgumentParser()
 parser.add_argument('--device', default='0,1,2,3', type=str, required=False, help='生成设备')
-parser.add_argument('--length', default=int(os.environ.get('GPT2_LENGTH', '-1')), type=int, required=False, help='生成长度')
 parser.add_argument('--batch_size', default=1, type=int, required=False, help='生成的batch size')
 parser.add_argument('--nsamples', default=1
                     , type=int, required=False, help='生成几个样本')
-parser.add_argument('--temperature', default=2, type=float, required=False, help='文章生成的隨機度ˇ')
 parser.add_argument('--topk', default=12, type=int, required=False, help='最高几选一')
 parser.add_argument('--topp', default=3, type=float, required=False, help='最高积累概率')
 parser.add_argument('--model_config', default='config/model_config_small.json', type=str, required=False,
@@ -30,7 +28,6 @@ parser.add_argument('--model_path', default='model/final_model', type=str, requi
 parser.add_argument('--prefix', default='豬肉', type=str, required=False, help='生成文章的开头')
 parser.add_argument('--no_wordpiece', action='store_true', help='不做word piece切词')
 parser.add_argument('--segment', action='store_true', help='中文以词为单位')
-parser.add_argument('--fast_pattern', action='store_true', help='采用更加快的方式生成文本')
 parser.add_argument('--repetition_penalty', default=1.0, type=float, required=False)
 
 args = parser.parse_args()
@@ -42,10 +39,8 @@ else:
     from tokenizations import tokenization_bert
 
 os.environ["CUDA_VISIBLE_DEVICES"] = args.device  # 此处设置程序使用哪些显卡
-length = args.length
 batch_size = args.batch_size
 nsamples = args.nsamples
-temperature = args.temperature
 topk = args.topk
 topp = args.topp
 repetition_penalty = args.repetition_penalty
@@ -58,11 +53,14 @@ model.to(device)
 model.eval()
 
 n_ctx = model.config.n_ctx
-if length == -1:
-    length = model.config.n_ctx
 
-def text_generator(seed):
+def text_generator(seed, length, temperature, fast_pattern):
+    print(f"seed: {seed} length: {length} temperature: {temperature} fast_pattern: {fast_pattern}")
+
     generated_texts = []
+
+    if length == -1:
+        length = model.config.n_ctx
 
     # generate text
     raw_text = seed
@@ -74,7 +72,7 @@ def text_generator(seed):
             model=model,
             context=context_tokens,
             length=length,
-            is_fast_pattern=args.fast_pattern, tokenizer=tokenizer,
+            is_fast_pattern=fast_pattern, tokenizer=tokenizer,
             temperature=temperature, top_k=topk, top_p=topp, repitition_penalty=repetition_penalty, device=device
         )
         for i in range(batch_size):
@@ -103,16 +101,22 @@ def text_generator(seed):
 
 # Create app
 app = Flask(__name__)
-
+app.config['DEBUG'] = True
 
 class ReusableForm(Form):
     """User entry form for entering specifics for generation"""
     # Starting seed
-    seed = TextField("Enter a seed sentence:", validators=[
-                     validators.InputRequired()])
+    seed = TextField("Enter a seed sentence:", default="豬肉", validators=[validators.InputRequired()])
+
+    # Configure GPT2
+    length = IntegerField("生成長度 (<=1024):", default=50, validators=[validators.InputRequired(), validators.NumberRange(-1, 1024)])
+    temperature = DecimalField("文章生成的隨機度 (0.1-3):", default=2, places=1, validators=[validators.InputRequired(), validators.NumberRange(0.1, 3)])
+    fast_pattern = BooleanField("采用更加快的方式生成文本:", default=False)
 
     # Submit button
     submit = SubmitField("Enter")
+
+
 
 # Home page
 @app.route("/", methods=['GET', 'POST'])
@@ -125,8 +129,17 @@ def home():
     if request.method == 'POST' and form.validate():
         # Extract information
         seed = request.form['seed']
+        length = int(request.form['length'])
+        temperature = float(request.form['temperature'])
+        fast_pattern = 'fast_pattern' in request.form.keys()
+
         # Generate a random sequence
-        return render_template('seeded.html', seed=seed, input=text_generator(seed=seed)[0])
+        generatedText = text_generator(seed=seed,
+                                       length=length,
+                                       temperature=temperature,
+                                       fast_pattern=fast_pattern)[0]
+
+        return render_template('seeded.html', seed=seed, input=generatedText)
     # Send template information to index.html
     return render_template('index.html', form=form)
 

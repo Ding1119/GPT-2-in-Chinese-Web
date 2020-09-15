@@ -7,5 +7,3 @@ services:
       dockerfile: Dockerfile
     ports:
       - "${PORT:?}:80"
-    environment:
-      - GPT2_LENGTH=${GPT2_LENGTH}

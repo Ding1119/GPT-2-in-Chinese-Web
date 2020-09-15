@@ -31,8 +31,6 @@ parser.add_argument('--prefix', default='豬肉', type=str, required=False, help
 parser.add_argument('--no_wordpiece', action='store_true', help='不做word piece切词')
 parser.add_argument('--segment', action='store_true', help='中文以词为单位')
 parser.add_argument('--fast_pattern', action='store_true', help='采用更加快的方式生成文本')
-parser.add_argument('--save_samples', action='store_true', help='保存产生的样本')
-parser.add_argument('--save_samples_path', default='generate_sample/', type=str, required=False, help="保存样本的路径")
 parser.add_argument('--repetition_penalty', default=1.0, type=float, required=False)
 
 args = parser.parse_args()

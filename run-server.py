@@ -16,7 +16,7 @@ import generate
 # copied from generate.py
 parser = argparse.ArgumentParser()
 parser.add_argument('--device', default='0,1,2,3', type=str, required=False, help='生成设备')
-parser.add_argument('--length', default=-1, type=int, required=False, help='生成长度')
+parser.add_argument('--length', default=int(os.environ.get('GPT2_LENGTH', '-1')), type=int, required=False, help='生成长度')
 parser.add_argument('--batch_size', default=1, type=int, required=False, help='生成的batch size')
 parser.add_argument('--nsamples', default=1
                     , type=int, required=False, help='生成几个样本')
@@ -31,8 +31,6 @@ parser.add_argument('--prefix', default='豬肉', type=str, required=False, help
 parser.add_argument('--no_wordpiece', action='store_true', help='不做word piece切词')
 parser.add_argument('--segment', action='store_true', help='中文以词为单位')
 parser.add_argument('--fast_pattern', action='store_true', help='采用更加快的方式生成文本')
-parser.add_argument('--save_samples', action='store_true', help='保存产生的样本')
-parser.add_argument('--save_samples_path', default='generate_sample/', type=str, required=False, help="保存样本的路径")
 parser.add_argument('--repetition_penalty', default=1.0, type=float, required=False)
 
 args = parser.parse_args()
@@ -138,6 +136,6 @@ if __name__ == "__main__":
            "please wait until server has fully started"))
  
     # Run app
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=80)
 
     # print(text_generator('豬肉')[0])

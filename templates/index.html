@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>GPT-2 Chinese generate</title>
+    <title>GPT-2 Chinese generator</title>
     <link rel="stylesheet" href="/static/css/main.css">
 
 </head>
@@ -12,7 +12,7 @@
     <br/>
 
     <h1>
-        GPT-2 Chinese generate
+        GPT-2 Chinese generator
     </h1>
 
     {% block content %}
@@ -21,10 +21,27 @@
         {% endfor %}
 
         <form method=post>
-
             {{ form.seed.label }}
             {{ form.seed }}
 
+            <div>Options:</div>
+            {{ form.length.label(class_="optionlabel") }}
+            {{ form.length }}
+            {% for message in form.length.errors %}
+                <div class="flash">{{ message }}</div>
+            {% endfor %}
+        <br>            
+            {{ form.temperature.label(class_="optionlabel") }}
+            {{ form.temperature }}
+            {% for message in form.temperature.errors %}
+                <div class="flash">{{ message }}</div>
+            {% endfor %}
+        <br>
+            {{ form.fast_pattern.label(class_="optionlabel") }}
+            {{ form.fast_pattern }}
+            {% for message in form.fast_pattern.errors %}
+                <div class="flash">{{ message }}</div>
+            {% endfor %}
             {{ form.submit }}
         </form>
     {% endblock %}

@@ -97,7 +97,12 @@ form label {
     padding: 10px 0;
 }
 
-form input#seed, form input#diversity, form input#words {
+.optionlabel {
+    font-size: 16px;
+    display: inline-block;
+}
+
+form input#seed {
     height: 50px;
     width: 75%;
     background-color: #fafafa;
@@ -107,6 +112,17 @@ form input#seed, form input#diversity, form input#words {
     border: 1px solid #cccccc;
     padding: 5px;
     font-size: 24px;
+    margin: 12px;
+}
+
+form input#length, form input#temperature {
+    background-color: #fafafa;
+    -webkit-border-radius: 3px;
+    -moz-border-radius: 3px;
+    border-radius: 3px;
+    border: 1px solid #cccccc;
+    padding: 5px;
+    font-size: 16px;
     margin: 12px;
 }
 

@@ -5,6 +5,7 @@ import random
 import numpy as np
 from utils import header, add_content, box
 from wtforms import Form, TextField, IntegerField, DecimalField, BooleanField, validators, SubmitField
+from wtforms.fields.html5 import IntegerRangeField
 import torch
 import torch.nn.functional as F
 import os
@@ -17,8 +18,6 @@ import generate
 parser = argparse.ArgumentParser()
 parser.add_argument('--device', default='0,1,2,3', type=str, required=False, help='生成设备')
 parser.add_argument('--batch_size', default=1, type=int, required=False, help='生成的batch size')
-parser.add_argument('--nsamples', default=1
-                    , type=int, required=False, help='生成几个样本')
 parser.add_argument('--topk', default=12, type=int, required=False, help='最高几选一')
 parser.add_argument('--topp', default=3, type=float, required=False, help='最高积累概率')
 parser.add_argument('--model_config', default='config/model_config_small.json', type=str, required=False,
@@ -40,7 +39,6 @@ else:
 
 os.environ["CUDA_VISIBLE_DEVICES"] = args.device  # 此处设置程序使用哪些显卡
 batch_size = args.batch_size
-nsamples = args.nsamples
 topk = args.topk
 topp = args.topp
 repetition_penalty = args.repetition_penalty
@@ -54,10 +52,11 @@ model.eval()
 
 n_ctx = model.config.n_ctx
 
-def text_generator(seed, length, temperature, fast_pattern):
+def text_generator(seed, length, temperature, fast_pattern, nsamples):
     print(f"seed: {seed} length: {length} temperature: {temperature} fast_pattern: {fast_pattern}")
 
-    generated_texts = []
+    samples_combined = ''
+    samples_list = []
 
     if length == -1:
         length = model.config.n_ctx
@@ -93,10 +92,11 @@ def text_generator(seed, length, temperature, fast_pattern):
             text = ''.join(text).replace('##', '').strip()
             print(text)
 
-            generated_texts.append(text)
+            samples_combined = samples_combined + info + text + "\n"
+            samples_list.append(text)
     print("=" * 80)
-    if generated == nsamples:
-        return generated_texts
+    samples_combined = samples_combined + "=" * 80 + "\n"
+    return samples_combined, samples_list
 
 
 # Create app
@@ -112,6 +112,7 @@ class ReusableForm(Form):
     length = IntegerField("生成長度 (<=1024):", default=50, validators=[validators.InputRequired(), validators.NumberRange(-1, 1024)])
     temperature = DecimalField("文章生成的隨機度 (0.1-3):", default=2, places=1, validators=[validators.InputRequired(), validators.NumberRange(0.1, 3)])
     fast_pattern = BooleanField("采用更加快的方式生成文本:", default=False)
+    nsamples = IntegerRangeField('生成幾個樣本:', default=1)
 
     # Submit button
     submit = SubmitField("Enter")
@@ -132,14 +133,18 @@ def home():
         length = int(request.form['length'])
         temperature = float(request.form['temperature'])
         fast_pattern = 'fast_pattern' in request.form.keys()
+        nsamples = int(request.form['nsamples'])
 
         # Generate a random sequence
-        generatedText = text_generator(seed=seed,
-                                       length=length,
-                                       temperature=temperature,
-                                       fast_pattern=fast_pattern)[0]
-
-        return render_template('seeded.html', seed=seed, input=generatedText)
+        samples_combined, samples_list = text_generator(seed=seed,
+                                                        length=length,
+                                                        temperature=temperature,
+                                                        fast_pattern=fast_pattern,
+                                                        nsamples=nsamples)
+        return render_template('seeded.html',
+                                seed=seed,
+                                samples_combined=samples_combined,
+                                samples_list=samples_list)
     # Send template information to index.html
     return render_template('index.html', form=form)
 

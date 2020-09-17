@@ -6,15 +6,23 @@
     <link rel="stylesheet" href="/static/css/main.css">
     <ul>
         <li><a href="/">Home</a></li>
+        <li><a id="downloadLink" download="GPT2-chinese-samples.txt">Download</a></li>
     </ul>
 </header>
 
 <body>
-<div class="container">
-    {% block content %}
-        {{ input|safe }}
-    {% endblock %}
-</div>
+{% block content %}
+    {% for sample in samples_list %}
+    <div class="container">
+        {{ sample|safe }}
+    </div>
+    {% endfor %}
+{% endblock %}
 </body>
-
+<script>
+    (function() {
+        let text = `{{ samples_combined|safe }}`;
+        document.getElementById("downloadLink").setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+    })();
+</script>
 </html>

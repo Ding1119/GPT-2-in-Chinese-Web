@@ -4,6 +4,7 @@
 <head>
     <title>GPT-2 Chinese generator</title>
     <link rel="stylesheet" href="/static/css/main.css">
+
 </head>
 
 <body>
@@ -41,28 +42,12 @@
             {% for message in form.fast_pattern.errors %}
                 <div class="flash">{{ message }}</div>
             {% endfor %}
-        <br>
-            {{ form.nsamples.label(class_="optionlabel") }}
-            <span id=nsamplesValue></span>
-            {{ form.nsamples(min=0, max=10, oninput="nsamplesChanged(value)") }}
-            {% for message in form.nsamples.errors %}
-                <div class="flash">{{ message }}</div>
-            {% endfor %}
-
             {{ form.submit }}
         </form>
     {% endblock %}
 
     <br/>
 </div>
-<script>
-    function nsamplesChanged(value) {
-        document.getElementById('nsamplesValue').innerText = value
-    }
-    window.addEventListener("load", () => {
-        nsamplesChanged(document.getElementById('nsamples').value);
-    });
-</script>
 </body>
 
 </html>

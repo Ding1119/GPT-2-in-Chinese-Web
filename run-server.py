@@ -18,8 +18,6 @@ import generate
 parser = argparse.ArgumentParser()
 parser.add_argument('--device', default='0,1,2,3', type=str, required=False, help='生成设备')
 parser.add_argument('--batch_size', default=1, type=int, required=False, help='生成的batch size')
-parser.add_argument('--topk', default=12, type=int, required=False, help='最高几选一')
-parser.add_argument('--topp', default=3, type=float, required=False, help='最高积累概率')
 parser.add_argument('--model_config', default='config/model_config_small.json', type=str, required=False,
                     help='模型参数')
 parser.add_argument('--tokenizer_path', default='cache/vocab_processed.txt', type=str, required=False, help='词表路径')
@@ -39,8 +37,6 @@ else:
 
 os.environ["CUDA_VISIBLE_DEVICES"] = args.device  # 此处设置程序使用哪些显卡
 batch_size = args.batch_size
-topk = args.topk
-topp = args.topp
 repetition_penalty = args.repetition_penalty
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -52,8 +48,8 @@ model.eval()
 
 n_ctx = model.config.n_ctx
 
-def text_generator(seed, length, temperature, fast_pattern, nsamples):
-    print(f"seed: {seed} length: {length} temperature: {temperature} fast_pattern: {fast_pattern}")
+def text_generator(seed, length, temperature, topk, topp, fast_pattern, nsamples):
+    print(f"seed: {seed} length: {length} temperature: {temperature} topk: {topk} topp: {topp} fast_pattern: {fast_pattern}")
 
     samples_combined = ''
     samples_list = []
@@ -111,6 +107,9 @@ class ReusableForm(Form):
     # Configure GPT2
     length = IntegerField("生成長度 (<=1024):", default=50, validators=[validators.InputRequired(), validators.NumberRange(-1, 1024)])
     temperature = DecimalField("文章生成的隨機度 (0.1-3):", default=2, places=1, validators=[validators.InputRequired(), validators.NumberRange(0.1, 3)])
+    topk = IntegerField("最高幾選一 :", default=12, validators=[validators.InputRequired()])
+    topp = DecimalField("最高積累概率:", default=3, validators=[validators.InputRequired()])
+    temperature = DecimalField("文章生成的隨機度 (0.1-3):", default=2, places=1, validators=[validators.InputRequired(), validators.NumberRange(0.1, 3)])
     fast_pattern = BooleanField("采用更加快的方式生成文本:", default=False)
     nsamples = IntegerRangeField('生成幾個樣本:', default=1)
 
@@ -132,6 +131,8 @@ def home():
         seed = request.form['seed']
         length = int(request.form['length'])
         temperature = float(request.form['temperature'])
+        topk = int(request.form['topk'])
+        topp = float(request.form['topp'])
         fast_pattern = 'fast_pattern' in request.form.keys()
         nsamples = int(request.form['nsamples'])
 
@@ -139,6 +140,8 @@ def home():
         samples_combined, samples_list = text_generator(seed=seed,
                                                         length=length,
                                                         temperature=temperature,
+                                                        topk=topk,
+                                                        topp=topp,
                                                         fast_pattern=fast_pattern,
                                                         nsamples=nsamples)
         return render_template('seeded.html',

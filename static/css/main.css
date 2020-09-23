@@ -115,7 +115,7 @@ form input#seed {
     margin: 12px;
 }
 
-form input#length, form input#temperature {
+form input#length, form input#temperature, form input#topk, form input#topp {
     background-color: #fafafa;
     -webkit-border-radius: 3px;
     -moz-border-radius: 3px;

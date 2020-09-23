@@ -35,12 +35,26 @@
             {% for message in form.temperature.errors %}
                 <div class="flash">{{ message }}</div>
             {% endfor %}
+        <br>            
+            {{ form.topk.label(class_="optionlabel") }}
+            {{ form.topk }}
+            {% for message in form.topk.errors %}
+                <div class="flash">{{ message }}</div>
+            {% endfor %}
+        <br>            
+            {{ form.topp.label(class_="optionlabel") }}
+            {{ form.topp }}
+            {% for message in form.topp.errors %}
+                <div class="flash">{{ message }}</div>
+            {% endfor %}
+<!-- 
         <br>
             {{ form.fast_pattern.label(class_="optionlabel") }}
             {{ form.fast_pattern }}
             {% for message in form.fast_pattern.errors %}
                 <div class="flash">{{ message }}</div>
             {% endfor %}
+-->
         <br>
             {{ form.nsamples.label(class_="optionlabel") }}
             <span id=nsamplesValue></span>

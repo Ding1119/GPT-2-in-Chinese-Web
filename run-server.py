@@ -173,6 +173,11 @@ def home():
     # Create form
     form = ReusableForm(request.form)
 
+    # Determine model choices on every request so we don't need to
+    # restart the server when adding or removing models
+    form.modelname.choices = findModels()
+    form.modelname.default = form.modelname.choices[0]
+
     # On form entry and all conditions met
     if request.method == 'POST' and form.validate():
         # Extract information
@@ -199,11 +204,6 @@ def home():
                                 samples_combined=samples_combined,
                                 samples_list=samples_list)
     else:
-        # Determine model choices on every request so we don't need to
-        # restart the server when adding or removing models
-        form.modelname.choices = findModels()
-        form.modelname.default = form.modelname.choices[0]
-
         # Send template information to index.html
         return render_template('index.html', form=form)
 

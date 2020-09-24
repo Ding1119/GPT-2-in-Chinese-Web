@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>GPT-2 Chinese generator</title>
+    <title>GPT-2 假新聞生成器</title>
     <link rel="stylesheet" href="/static/css/main.css">
 </head>
 
@@ -11,7 +11,7 @@
     <br/>
 
     <h1>
-        GPT-2 Chinese generator
+        GPT-2 假新聞生成器
     </h1>
 
     {% block content %}
@@ -23,7 +23,14 @@
             {{ form.seed.label }}
             {{ form.seed }}
 
-            <div>Options:</div>
+            <div>設定:</div>
+
+            {{ form.modelname.label(class_="optionlabel") }}
+            {{ form.modelname }}
+            {% for message in form.modelname.errors %}
+                <div class="flash">{{ message }}</div>
+            {% endfor %}
+        <br>            
             {{ form.length.label(class_="optionlabel") }}
             {{ form.length }}
             {% for message in form.length.errors %}

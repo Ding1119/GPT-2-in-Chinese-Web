@@ -6,4 +6,8 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "${PORT:?}:80"
+      - "${PORT:?\nPlease set the PORT variable}:8000"
+    volumes:
+      - type: bind
+        source: "${MODELDIR:?\nPlease set the MODELDIR variable}"
+        target: /gpt2zh/models

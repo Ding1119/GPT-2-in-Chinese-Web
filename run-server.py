@@ -4,7 +4,7 @@ import torch
 import random
 import numpy as np
 from utils import header, add_content, box
-from wtforms import Form, TextField, IntegerField, DecimalField, BooleanField, validators, SubmitField
+from wtforms import Form, TextField, IntegerField, DecimalField, BooleanField, validators, SubmitField, SelectField
 from wtforms.fields.html5 import IntegerRangeField
 import torch
 import torch.nn.functional as F
@@ -20,8 +20,9 @@ parser.add_argument('--device', default='0,1,2,3', type=str, required=False, hel
 parser.add_argument('--batch_size', default=1, type=int, required=False, help='生成的batch size')
 parser.add_argument('--model_config', default='config/model_config_small.json', type=str, required=False,
                     help='模型参数')
-parser.add_argument('--tokenizer_path', default='cache/vocab_processed.txt', type=str, required=False, help='词表路径')
-parser.add_argument('--model_path', default='model/final_model', type=str, required=False, help='模型路径')
+# moved to model directory
+# parser.add_argument('--tokenizer_path', default='cache/vocab_processed.txt', type=str, required=False, help='词表路径')
+# parser.add_argument('--model_path', default='model/final_model', type=str, required=False, help='模型路径')
 parser.add_argument('--prefix', default='豬肉', type=str, required=False, help='生成文章的开头')
 parser.add_argument('--no_wordpiece', action='store_true', help='不做word piece切词')
 parser.add_argument('--segment', action='store_true', help='中文以词为单位')
@@ -41,15 +42,70 @@ repetition_penalty = args.repetition_penalty
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-tokenizer = tokenization_bert.BertTokenizer(vocab_file=args.tokenizer_path)
-model = GPT2LMHeadModel.from_pretrained(args.model_path)
-model.to(device)
-model.eval()
+def findModels():
+    return [f.name for f in os.scandir('models') if f.is_dir() and checkModelDirectory(f.name)]
 
-n_ctx = model.config.n_ctx
+def checkModelDirectory(modelname):
+    if not os.path.exists(f'models/{modelname}/cache/vocab_processed.txt'):
+        app.logger.warning(f"!!!!!! WARNING: skipping model {modelname}: models/{modelname}/cache/vocab_processed.txt not found")
+        return False
+    if not os.path.exists(f'models/{modelname}/final_model/config.json'):
+        app.logger.warning(f"!!!!!! WARNING: skipping model {modelname}: models/{modelname}/final_model/config.json not found")
+        return False
+    if not os.path.exists(f'models/{modelname}/final_model/pytorch_model.bin'):
+        app.logger.warning(f"!!!!!! WARNING: skipping model {modelname}: models/{modelname}/final_model/pytorch_model.bin not found")
+        return False
+    return True
 
-def text_generator(seed, length, temperature, topk, topp, fast_pattern, nsamples):
-    print(f"seed: {seed} length: {length} temperature: {temperature} topk: {topk} topp: {topp} fast_pattern: {fast_pattern}")
+def getModelModificationTime(modelname):
+    return [
+        os.path.getmtime(f'models/{modelname}/cache/vocab_processed.txt'),
+        os.path.getmtime(f'models/{modelname}/final_model/config.json'),
+        os.path.getmtime(f'models/{modelname}/final_model/pytorch_model.bin')
+    ]
+
+current_modelname = None
+current_modeltime = None
+current_model = None
+current_tokenizer = None
+def getModel(modelname):
+    global current_modelname, current_modeltime, current_model, current_tokenizer
+    if current_modelname != modelname or current_modeltime != getModelModificationTime(modelname):
+        app.logger.info(f"loading {modelname}")
+        current_modelname = modelname
+        current_modeltime = getModelModificationTime(modelname)
+
+        # Code used before adding a models directory to support multiple models (which may have different vocab)
+        # parser.add_argument('--tokenizer_path', default='cache/vocab_processed.txt', type=str, required=False, help='词表路径')
+        # tokenizer = tokenization_bert.BertTokenizer(vocab_file=args.tokenizer_path)
+        tokenizer_path = f'models/{modelname}/cache/vocab_processed.txt'
+        current_tokenizer = tokenization_bert.BertTokenizer(vocab_file=tokenizer_path)
+        app.logger.info(f"tokenizer loaded from {tokenizer_path}")
+
+        # Code used before adding a models directory to support multiple models
+        # parser.add_argument('--model_path', default='model/final_model', type=str, required=False, help='模型路径')
+        # model = GPT2LMHeadModel.from_pretrained(args.model_path)
+        model_path = f'models/{modelname}/final_model'
+        current_model = GPT2LMHeadModel.from_pretrained(model_path)
+        current_model.to(device)
+        current_model.eval()
+        app.logger.info(f"model loaded from {model_path}")
+
+    return current_model, current_tokenizer
+
+def text_generator(seed, length, temperature, topk, topp, fast_pattern, nsamples, modelname):
+    app.logger.info(f"""
+seed: {seed}
+length: {length}
+temperature: {temperature}
+topk: {topk}
+topp: {topp}
+fast_pattern: {fast_pattern}
+modelname: {modelname}""")
+
+    model, tokenizer = getModel(modelname)
+
+    n_ctx = model.config.n_ctx
 
     samples_combined = ''
     samples_list = []
@@ -84,39 +140,38 @@ def text_generator(seed, length, temperature, topk, topp, fast_pattern, nsamples
                 elif item == '[SEP]':
                     text[i] = '\n'
             info = "=" * 40 + " SAMPLE " + str(generated) + " " + "=" * 40 + "\n"
-            print(info)
+            app.logger.info(info)
             text = ''.join(text).replace('##', '').strip()
-            print(text)
+            app.logger.info(text)
 
             samples_combined = samples_combined + info + text + "\n"
             samples_list.append(text)
-    print("=" * 80)
+    app.logger.info("=" * 80)
     samples_combined = samples_combined + "=" * 80 + "\n"
     return samples_combined, samples_list
-
-
-# Create app
-app = Flask(__name__)
-app.config['DEBUG'] = True
 
 class ReusableForm(Form):
     """User entry form for entering specifics for generation"""
     # Starting seed
-    seed = TextField("Enter a seed sentence:", default="豬肉", validators=[validators.InputRequired()])
-
+    seed = TextField("請輸入一個起始句子:", default="豬肉", validators=[validators.InputRequired()])
+  
     # Configure GPT2
     length = IntegerField("生成長度 (<=1024):", default=50, validators=[validators.InputRequired(), validators.NumberRange(-1, 1024)])
     temperature = DecimalField("文章生成的隨機度 (0.1-3):", default=2, places=1, validators=[validators.InputRequired(), validators.NumberRange(0.1, 3)])
-    topk = IntegerField("最高幾選一 :", default=12, validators=[validators.InputRequired()])
-    topp = DecimalField("最高積累概率:", default=3, validators=[validators.InputRequired()])
+    topk = IntegerField("前k大的機率頻繁詞抽樣:", default=12, validators=[validators.InputRequired()])
+    topp = DecimalField("前k大的累積機率頻繁詞抽樣:", default=3, validators=[validators.InputRequired()])
     temperature = DecimalField("文章生成的隨機度 (0.1-3):", default=2, places=1, validators=[validators.InputRequired(), validators.NumberRange(0.1, 3)])
     fast_pattern = BooleanField("采用更加快的方式生成文本:", default=False)
     nsamples = IntegerRangeField('生成幾個樣本:', default=1)
+    modelname = SelectField('模型', validators=[validators.InputRequired()])
+    fast_pattern = BooleanField("采用更加快的方式生成文本:", default=False)
 
     # Submit button
-    submit = SubmitField("Enter")
+    submit = SubmitField("開始產生文章")
 
-
+# Create app
+app = Flask(__name__)
+app.config['DEBUG'] = True
 
 # Home page
 @app.route("/", methods=['GET', 'POST'])
@@ -124,6 +179,12 @@ def home():
     """Home page of app with form"""
     # Create form
     form = ReusableForm(request.form)
+
+    # Determine model choices on every request so we don't need to
+    # restart the server when adding or removing models
+    form.modelname.choices = findModels()
+    if len(form.modelname.choices) > 0:
+        form.modelname.default = form.modelname.choices[0]
 
     # On form entry and all conditions met
     if request.method == 'POST' and form.validate():
@@ -135,6 +196,7 @@ def home():
         topp = float(request.form['topp'])
         fast_pattern = 'fast_pattern' in request.form.keys()
         nsamples = int(request.form['nsamples'])
+        modelname = request.form['modelname']
 
         # Generate a random sequence
         samples_combined, samples_list = text_generator(seed=seed,
@@ -143,20 +205,22 @@ def home():
                                                         topk=topk,
                                                         topp=topp,
                                                         fast_pattern=fast_pattern,
-                                                        nsamples=nsamples)
+                                                        nsamples=nsamples,
+                                                        modelname=modelname)
         return render_template('seeded.html',
                                 seed=seed,
                                 samples_combined=samples_combined,
                                 samples_list=samples_list)
-    # Send template information to index.html
-    return render_template('index.html', form=form)
+    else:
+        # Send template information to index.html
+        return render_template('index.html', form=form)
 
 
 if __name__ == "__main__":
-    print(("* Loading model and Flask starting server..."
-           "please wait until server has fully started"))
+    app.logger.info(("* Loading model and Flask starting server..."
+                     "please wait until server has fully started"))
  
     # Run app
-    app.run(host="0.0.0.0", port=80)
+    app.run(host="0.0.0.0", port=8000)
 
     # print(text_generator('豬肉')[0])

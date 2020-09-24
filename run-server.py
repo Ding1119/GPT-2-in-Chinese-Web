@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, Response
 import torch
 import random
 import numpy as np
@@ -13,6 +13,7 @@ import argparse
 from tqdm import trange
 from transformers import GPT2LMHeadModel
 import generate
+import urllib
 
 # copied from generate.py
 parser = argparse.ArgumentParser()
@@ -119,7 +120,7 @@ modelname: {modelname}""")
     raw_text = seed
     context_tokens = tokenizer.convert_tokens_to_ids(tokenizer.tokenize(raw_text))
     generated = 0
-    for _ in range(nsamples // batch_size):
+    for _ in range(nsamples):
         out = generate.generate(
             n_ctx=n_ctx,
             model=model,
@@ -128,29 +129,26 @@ modelname: {modelname}""")
             is_fast_pattern=fast_pattern, tokenizer=tokenizer,
             temperature=temperature, top_k=topk, top_p=topp, repitition_penalty=repetition_penalty, device=device
         )
-        for i in range(batch_size):
-            generated += 1
-            text = tokenizer.convert_ids_to_tokens(out)
-            for i, item in enumerate(text[:-1]):  # 确保英文前后有空格
-                if generate.is_word(item) and generate.is_word(text[i + 1]):
-                    text[i] = item + ' '
-            for i, item in enumerate(text):
-                if item == '[MASK]':
-                    text[i] = ''
-                elif item == '[CLS]':
-                    text[i] = '\n\n'
-                elif item == '[SEP]':
-                    text[i] = '\n'
-            info = "=" * 40 + " SAMPLE " + str(generated) + " " + "=" * 40 + "\n"
-            app.logger.info(info)
-            text = ''.join(text).replace('##', '').strip()
-            app.logger.info(text)
 
-            samples_combined = samples_combined + info + text + "\n"
-            samples_list.append(text)
-    app.logger.info("=" * 80)
-    samples_combined = samples_combined + "=" * 80 + "\n"
-    return samples_combined, samples_list
+        generated += 1
+        text = tokenizer.convert_ids_to_tokens(out)
+        for i, item in enumerate(text[:-1]):  # 确保英文前后有空格
+            if generate.is_word(item) and generate.is_word(text[i + 1]):
+                text[i] = item + ' '
+        for i, item in enumerate(text):
+            if item == '[MASK]':
+                text[i] = ''
+            elif item == '[CLS]':
+                text[i] = '\n\n'
+            elif item == '[SEP]':
+                text[i] = '\n'
+        info = "=" * 40 + " SAMPLE " + str(generated) + " " + "=" * 40 + "\n"
+        app.logger.info(info)
+        text = ''.join(text).replace('##', '').strip()
+        app.logger.info(text)
+
+        yield info + text
+
 
 class ReusableForm(Form):
     """User entry form for entering specifics for generation"""
@@ -163,7 +161,7 @@ class ReusableForm(Form):
     topk = IntegerField("前k大的機率頻繁詞抽樣:", default=50, validators=[validators.InputRequired()])
     topp = DecimalField("前k大的累積機率頻繁詞抽樣:", default=0, validators=[validators.InputRequired()])
     fast_pattern = BooleanField("采用更加快的方式生成文本:", default=False)
-    nsamples = IntegerRangeField('生成幾個樣本:', default=1)
+    nsamples = IntegerRangeField('生成幾個樣本:', default=2)
     modelname = SelectField('模型', validators=[validators.InputRequired()])
     fast_pattern = BooleanField("采用更加快的方式生成文本:", default=False)
 
@@ -173,6 +171,34 @@ class ReusableForm(Form):
 # Create app
 app = Flask(__name__)
 app.config['DEBUG'] = True
+
+# Progress
+@app.route("/progress", methods=['GET'])
+def progress():
+    print (request.args)
+    # Extract information
+    seed = request.args['seed']
+    length = int(request.args['length'])
+    temperature = float(request.args['temperature'])
+    topk = int(request.args['topk'])
+    topp = float(request.args['topp'])
+    fast_pattern = 'fast_pattern' in request.args.keys()
+    nsamples = int(request.args['nsamples'])
+    modelname = request.args['modelname']
+
+    def generate():
+        # Generate a random sequence
+        for sample in text_generator(seed=seed,
+                                     length=length,
+                                     temperature=temperature,
+                                     topk=topk,
+                                     topp=topp,
+                                     fast_pattern=fast_pattern,
+                                     nsamples=nsamples,
+                                     modelname=modelname):
+            yield "data:" + urllib.parse.quote(sample) + "\n\n"
+        yield "data:[ALL SAMPLES GENERATED]\n\n"
+    return Response(generate(), mimetype= 'text/event-stream')
 
 # Home page
 @app.route("/", methods=['GET', 'POST'])
@@ -189,29 +215,7 @@ def home():
 
     # On form entry and all conditions met
     if request.method == 'POST' and form.validate():
-        # Extract information
-        seed = request.form['seed']
-        length = int(request.form['length'])
-        temperature = float(request.form['temperature'])
-        topk = int(request.form['topk'])
-        topp = float(request.form['topp'])
-        fast_pattern = 'fast_pattern' in request.form.keys()
-        nsamples = int(request.form['nsamples'])
-        modelname = request.form['modelname']
-
-        # Generate a random sequence
-        samples_combined, samples_list = text_generator(seed=seed,
-                                                        length=length,
-                                                        temperature=temperature,
-                                                        topk=topk,
-                                                        topp=topp,
-                                                        fast_pattern=fast_pattern,
-                                                        nsamples=nsamples,
-                                                        modelname=modelname)
-        return render_template('seeded.html',
-                                seed=seed,
-                                samples_combined=samples_combined,
-                                samples_list=samples_list)
+        return render_template('seeded.html', query=urllib.parse.urlencode(request.form))
     else:
         # Send template information to index.html
         return render_template('index.html', form=form)

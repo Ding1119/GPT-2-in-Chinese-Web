@@ -4,7 +4,7 @@ import torch
 import random
 import numpy as np
 from utils import header, add_content, box
-from wtforms import Form, TextField, IntegerField, DecimalField, BooleanField, validators, SubmitField
+from wtforms import Form, TextField, IntegerField, DecimalField, BooleanField, validators, SubmitField, SelectField
 from wtforms.fields.html5 import IntegerRangeField
 import torch
 import torch.nn.functional as F
@@ -46,9 +46,10 @@ current_modelname = None
 current_model = None
 current_tokenizer = None
 def getModel(modelname):
+    global current_modelname, current_model, current_tokenizer
     if current_modelname != modelname:
         print(f"loading {modelname}")
-        current_modelname != modelname
+        current_modelname = modelname
 
         # Code used before adding a models directory to support multiple models (which may have different vocab)
         # parser.add_argument('--tokenizer_path', default='cache/vocab_processed.txt', type=str, required=False, help='词表路径')
@@ -130,11 +131,26 @@ modelname: {modelname}""")
 app = Flask(__name__)
 app.config['DEBUG'] = True
 
+def checkModelDirectory(modelname):
+    if not os.path.exists(f'models/{modelname}/cache/vocab_processed.txt'):
+        print(f"!!!!!! WARNING: skipping model {modelname}: models/{modelname}/cache/vocab_processed.txt not found")
+        return False
+    if not os.path.exists(f'models/{modelname}/model/config.json'):
+        print(f"!!!!!! WARNING: skipping model {modelname}: models/{modelname}/model/config.json not found")
+        return False
+    if not os.path.exists(f'models/{modelname}/model/pytorch_model.bin'):
+        print(f"!!!!!! WARNING: skipping model {modelname}: models/{modelname}/model/pytorch_model.bin not found")
+        return False
+    return True
+
+def findModels():
+    return [f.name for f in os.scandir('models') if f.is_dir() and checkModelDirectory(f.name)]
+
 class ReusableForm(Form):
     """User entry form for entering specifics for generation"""
     # Starting seed
-    seed = TextField("Enter a seed sentence:", default="豬肉", validators=[validators.InputRequired()])
-
+    seed = TextField("請輸入種子句:", default="豬肉", validators=[validators.InputRequired()])
+  
     # Configure GPT2
     length = IntegerField("生成長度 (<=1024):", default=50, validators=[validators.InputRequired(), validators.NumberRange(-1, 1024)])
     temperature = DecimalField("文章生成的隨機度 (0.1-3):", default=2, places=1, validators=[validators.InputRequired(), validators.NumberRange(0.1, 3)])
@@ -143,6 +159,7 @@ class ReusableForm(Form):
     temperature = DecimalField("文章生成的隨機度 (0.1-3):", default=2, places=1, validators=[validators.InputRequired(), validators.NumberRange(0.1, 3)])
     fast_pattern = BooleanField("采用更加快的方式生成文本:", default=False)
     nsamples = IntegerRangeField('生成幾個樣本:', default=1)
+    modelname = SelectField('模型')
 
     # Submit button
     submit = SubmitField("Enter")
@@ -166,9 +183,7 @@ def home():
         topp = float(request.form['topp'])
         fast_pattern = 'fast_pattern' in request.form.keys()
         nsamples = int(request.form['nsamples'])
-
-        # TMP hardcoded for now
-        modelname = 'model1'
+        modelname = request.form['modelname']
 
         # Generate a random sequence
         samples_combined, samples_list = text_generator(seed=seed,
@@ -183,8 +198,14 @@ def home():
                                 seed=seed,
                                 samples_combined=samples_combined,
                                 samples_list=samples_list)
-    # Send template information to index.html
-    return render_template('index.html', form=form)
+    else:
+        # Determine model choices on every request so we don't need to
+        # restart the server when adding or removing models
+        form.modelname.choices = findModels()
+        form.modelname.default = form.modelname.choices[0]
+
+        # Send template information to index.html
+        return render_template('index.html', form=form)
 
 
 if __name__ == "__main__":

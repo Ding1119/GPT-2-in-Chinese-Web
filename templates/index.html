@@ -24,6 +24,13 @@
             {{ form.seed }}
 
             <div>Options:</div>
+
+            {{ form.modelname.label(class_="optionlabel") }}
+            {{ form.modelname }}
+            {% for message in form.modelname.errors %}
+                <div class="flash">{{ message }}</div>
+            {% endfor %}
+        <br>            
             {{ form.length.label(class_="optionlabel") }}
             {{ form.length }}
             {% for message in form.length.errors %}

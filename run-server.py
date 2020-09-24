@@ -42,14 +42,38 @@ repetition_penalty = args.repetition_penalty
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
+def findModels():
+    return [f.name for f in os.scandir('models') if f.is_dir() and checkModelDirectory(f.name)]
+
+def checkModelDirectory(modelname):
+    if not os.path.exists(f'models/{modelname}/cache/vocab_processed.txt'):
+        app.logger.warning(f"!!!!!! WARNING: skipping model {modelname}: models/{modelname}/cache/vocab_processed.txt not found")
+        return False
+    if not os.path.exists(f'models/{modelname}/final_model/config.json'):
+        app.logger.warning(f"!!!!!! WARNING: skipping model {modelname}: models/{modelname}/final_model/config.json not found")
+        return False
+    if not os.path.exists(f'models/{modelname}/final_model/pytorch_model.bin'):
+        app.logger.warning(f"!!!!!! WARNING: skipping model {modelname}: models/{modelname}/final_model/pytorch_model.bin not found")
+        return False
+    return True
+
+def getModelModificationTime(modelname):
+    return [
+        os.path.getmtime(f'models/{modelname}/cache/vocab_processed.txt'),
+        os.path.getmtime(f'models/{modelname}/final_model/config.json'),
+        os.path.getmtime(f'models/{modelname}/final_model/pytorch_model.bin')
+    ]
+
 current_modelname = None
+current_modeltime = None
 current_model = None
 current_tokenizer = None
 def getModel(modelname):
-    global current_modelname, current_model, current_tokenizer
-    if current_modelname != modelname:
+    global current_modelname, current_modeltime, current_model, current_tokenizer
+    if current_modelname != modelname or current_modeltime != getModelModificationTime(modelname):
         app.logger.info(f"loading {modelname}")
         current_modelname = modelname
+        current_modeltime = getModelModificationTime(modelname)
 
         # Code used before adding a models directory to support multiple models (which may have different vocab)
         # parser.add_argument('--tokenizer_path', default='cache/vocab_processed.txt', type=str, required=False, help='词表路径')
@@ -126,21 +150,6 @@ modelname: {modelname}""")
     samples_combined = samples_combined + "=" * 80 + "\n"
     return samples_combined, samples_list
 
-def checkModelDirectory(modelname):
-    if not os.path.exists(f'models/{modelname}/cache/vocab_processed.txt'):
-        app.logger.warning(f"!!!!!! WARNING: skipping model {modelname}: models/{modelname}/cache/vocab_processed.txt not found")
-        return False
-    if not os.path.exists(f'models/{modelname}/final_model/config.json'):
-        app.logger.warning(f"!!!!!! WARNING: skipping model {modelname}: models/{modelname}/final_model/config.json not found")
-        return False
-    if not os.path.exists(f'models/{modelname}/final_model/pytorch_model.bin'):
-        app.logger.warning(f"!!!!!! WARNING: skipping model {modelname}: models/{modelname}/final_model/pytorch_model.bin not found")
-        return False
-    return True
-
-def findModels():
-    return [f.name for f in os.scandir('models') if f.is_dir() and checkModelDirectory(f.name)]
-
 class ReusableForm(Form):
     """User entry form for entering specifics for generation"""
     # Starting seed
@@ -155,6 +164,7 @@ class ReusableForm(Form):
     fast_pattern = BooleanField("采用更加快的方式生成文本:", default=False)
     nsamples = IntegerRangeField('生成幾個樣本:', default=1)
     modelname = SelectField('模型', validators=[validators.InputRequired()])
+    fast_pattern = BooleanField("采用更加快的方式生成文本:", default=False)
 
     # Submit button
     submit = SubmitField("開始產生文章")

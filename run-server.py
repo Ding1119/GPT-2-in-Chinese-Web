@@ -48,7 +48,7 @@ current_tokenizer = None
 def getModel(modelname):
     global current_modelname, current_model, current_tokenizer
     if current_modelname != modelname:
-        print(f"loading {modelname}")
+        app.logger.info(f"loading {modelname}")
         current_modelname = modelname
 
         # Code used before adding a models directory to support multiple models (which may have different vocab)
@@ -56,21 +56,21 @@ def getModel(modelname):
         # tokenizer = tokenization_bert.BertTokenizer(vocab_file=args.tokenizer_path)
         tokenizer_path = f'models/{modelname}/cache/vocab_processed.txt'
         current_tokenizer = tokenization_bert.BertTokenizer(vocab_file=tokenizer_path)
-        print(f"tokenizer loaded from {tokenizer_path}")
+        app.logger.info(f"tokenizer loaded from {tokenizer_path}")
 
         # Code used before adding a models directory to support multiple models
         # parser.add_argument('--model_path', default='model/final_model', type=str, required=False, help='模型路径')
         # model = GPT2LMHeadModel.from_pretrained(args.model_path)
-        model_path = f'models/{modelname}/model'
+        model_path = f'models/{modelname}/final_model'
         current_model = GPT2LMHeadModel.from_pretrained(model_path)
         current_model.to(device)
         current_model.eval()
-        print(f"model loaded from {model_path}")
+        app.logger.info(f"model loaded from {model_path}")
 
     return current_model, current_tokenizer
 
 def text_generator(seed, length, temperature, topk, topp, fast_pattern, nsamples, modelname):
-    print(f"""
+    app.logger.info(f"""
 seed: {seed}
 length: {length}
 temperature: {temperature}
@@ -116,30 +116,25 @@ modelname: {modelname}""")
                 elif item == '[SEP]':
                     text[i] = '\n'
             info = "=" * 40 + " SAMPLE " + str(generated) + " " + "=" * 40 + "\n"
-            print(info)
+            app.logger.info(info)
             text = ''.join(text).replace('##', '').strip()
-            print(text)
+            app.logger.info(text)
 
             samples_combined = samples_combined + info + text + "\n"
             samples_list.append(text)
-    print("=" * 80)
+    app.logger.info("=" * 80)
     samples_combined = samples_combined + "=" * 80 + "\n"
     return samples_combined, samples_list
 
-
-# Create app
-app = Flask(__name__)
-app.config['DEBUG'] = True
-
 def checkModelDirectory(modelname):
     if not os.path.exists(f'models/{modelname}/cache/vocab_processed.txt'):
-        print(f"!!!!!! WARNING: skipping model {modelname}: models/{modelname}/cache/vocab_processed.txt not found")
+        app.logger.warning(f"!!!!!! WARNING: skipping model {modelname}: models/{modelname}/cache/vocab_processed.txt not found")
         return False
-    if not os.path.exists(f'models/{modelname}/model/config.json'):
-        print(f"!!!!!! WARNING: skipping model {modelname}: models/{modelname}/model/config.json not found")
+    if not os.path.exists(f'models/{modelname}/final_model/config.json'):
+        app.logger.warning(f"!!!!!! WARNING: skipping model {modelname}: models/{modelname}/final_model/config.json not found")
         return False
-    if not os.path.exists(f'models/{modelname}/model/pytorch_model.bin'):
-        print(f"!!!!!! WARNING: skipping model {modelname}: models/{modelname}/model/pytorch_model.bin not found")
+    if not os.path.exists(f'models/{modelname}/final_model/pytorch_model.bin'):
+        app.logger.warning(f"!!!!!! WARNING: skipping model {modelname}: models/{modelname}/final_model/pytorch_model.bin not found")
         return False
     return True
 
@@ -159,12 +154,14 @@ class ReusableForm(Form):
     temperature = DecimalField("文章生成的隨機度 (0.1-3):", default=2, places=1, validators=[validators.InputRequired(), validators.NumberRange(0.1, 3)])
     fast_pattern = BooleanField("采用更加快的方式生成文本:", default=False)
     nsamples = IntegerRangeField('生成幾個樣本:', default=1)
-    modelname = SelectField('模型')
+    modelname = SelectField('模型', validators=[validators.InputRequired()])
 
     # Submit button
     submit = SubmitField("開始產生文章")
 
-
+# Create app
+app = Flask(__name__)
+app.config['DEBUG'] = True
 
 # Home page
 @app.route("/", methods=['GET', 'POST'])
@@ -176,7 +173,8 @@ def home():
     # Determine model choices on every request so we don't need to
     # restart the server when adding or removing models
     form.modelname.choices = findModels()
-    form.modelname.default = form.modelname.choices[0]
+    if len(form.modelname.choices) > 0:
+        form.modelname.default = form.modelname.choices[0]
 
     # On form entry and all conditions met
     if request.method == 'POST' and form.validate():
@@ -209,8 +207,8 @@ def home():
 
 
 if __name__ == "__main__":
-    print(("* Loading model and Flask starting server..."
-           "please wait until server has fully started"))
+    app.logger.info(("* Loading model and Flask starting server..."
+                     "please wait until server has fully started"))
  
     # Run app
     app.run(host="0.0.0.0", port=8000)

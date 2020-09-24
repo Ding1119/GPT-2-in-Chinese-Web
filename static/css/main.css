@@ -208,3 +208,18 @@ form input#submit:hover {
     display: table;
     margin: auto;
 }
+
+#TWISC_LOGO_DIV_INDEX {
+    top: 0px;
+    right: 0px;
+    padding:15px;
+    position:absolute;
+    -webkit-filter: invert(1);
+    filter: invert(1);
+}
+#TWISC_LOGO_DIV_SEED {
+    top: 0px;
+    right: 0px;
+    padding:15px;
+    position:absolute;
+}

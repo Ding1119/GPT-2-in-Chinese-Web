@@ -20,8 +20,9 @@ parser.add_argument('--device', default='0,1,2,3', type=str, required=False, hel
 parser.add_argument('--batch_size', default=1, type=int, required=False, help='生成的batch size')
 parser.add_argument('--model_config', default='config/model_config_small.json', type=str, required=False,
                     help='模型参数')
-parser.add_argument('--tokenizer_path', default='cache/vocab_processed.txt', type=str, required=False, help='词表路径')
-parser.add_argument('--model_path', default='model/final_model', type=str, required=False, help='模型路径')
+# moved to model directory
+# parser.add_argument('--tokenizer_path', default='cache/vocab_processed.txt', type=str, required=False, help='词表路径')
+# parser.add_argument('--model_path', default='model/final_model', type=str, required=False, help='模型路径')
 parser.add_argument('--prefix', default='豬肉', type=str, required=False, help='生成文章的开头')
 parser.add_argument('--no_wordpiece', action='store_true', help='不做word piece切词')
 parser.add_argument('--segment', action='store_true', help='中文以词为单位')
@@ -41,15 +42,45 @@ repetition_penalty = args.repetition_penalty
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-tokenizer = tokenization_bert.BertTokenizer(vocab_file=args.tokenizer_path)
-model = GPT2LMHeadModel.from_pretrained(args.model_path)
-model.to(device)
-model.eval()
+current_modelname = None
+current_model = None
+current_tokenizer = None
+def getModel(modelname):
+    if current_modelname != modelname:
+        print(f"loading {modelname}")
+        current_modelname != modelname
 
-n_ctx = model.config.n_ctx
+        # Code used before adding a models directory to support multiple models (which may have different vocab)
+        # parser.add_argument('--tokenizer_path', default='cache/vocab_processed.txt', type=str, required=False, help='词表路径')
+        # tokenizer = tokenization_bert.BertTokenizer(vocab_file=args.tokenizer_path)
+        tokenizer_path = f'models/{modelname}/cache/vocab_processed.txt'
+        current_tokenizer = tokenization_bert.BertTokenizer(vocab_file=tokenizer_path)
+        print(f"tokenizer loaded from {tokenizer_path}")
 
-def text_generator(seed, length, temperature, topk, topp, fast_pattern, nsamples):
-    print(f"seed: {seed} length: {length} temperature: {temperature} topk: {topk} topp: {topp} fast_pattern: {fast_pattern}")
+        # Code used before adding a models directory to support multiple models
+        # parser.add_argument('--model_path', default='model/final_model', type=str, required=False, help='模型路径')
+        # model = GPT2LMHeadModel.from_pretrained(args.model_path)
+        model_path = f'models/{modelname}/model'
+        current_model = GPT2LMHeadModel.from_pretrained(model_path)
+        current_model.to(device)
+        current_model.eval()
+        print(f"model loaded from {model_path}")
+
+    return current_model, current_tokenizer
+
+def text_generator(seed, length, temperature, topk, topp, fast_pattern, nsamples, modelname):
+    print(f"""
+seed: {seed}
+length: {length}
+temperature: {temperature}
+topk: {topk}
+topp: {topp}
+fast_pattern: {fast_pattern}
+modelname: {modelname}""")
+
+    model, tokenizer = getModel(modelname)
+
+    n_ctx = model.config.n_ctx
 
     samples_combined = ''
     samples_list = []
@@ -136,6 +167,9 @@ def home():
         fast_pattern = 'fast_pattern' in request.form.keys()
         nsamples = int(request.form['nsamples'])
 
+        # TMP hardcoded for now
+        modelname = 'model1'
+
         # Generate a random sequence
         samples_combined, samples_list = text_generator(seed=seed,
                                                         length=length,
@@ -143,7 +177,8 @@ def home():
                                                         topk=topk,
                                                         topp=topp,
                                                         fast_pattern=fast_pattern,
-                                                        nsamples=nsamples)
+                                                        nsamples=nsamples,
+                                                        modelname=modelname)
         return render_template('seeded.html',
                                 seed=seed,
                                 samples_combined=samples_combined,
@@ -157,6 +192,6 @@ if __name__ == "__main__":
            "please wait until server has fully started"))
  
     # Run app
-    app.run(host="0.0.0.0", port=80)
+    app.run(host="0.0.0.0", port=8000)
 
     # print(text_generator('豬肉')[0])

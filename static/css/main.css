@@ -5,7 +5,20 @@ body {
     color: #444;
 }
 
+/* Create two equal columns that floats next to each other */
+.column {
+    float: left;
+    width: 45%;
+    padding: 10px;
+}
 
+/* Clear floats after the columns */
+.row:after {
+    content: "";
+    display: table;
+    clear: both;
+}
+  
 .container {
     text-align: center;
     background-color: ivory;
@@ -100,6 +113,17 @@ form label {
 .optionlabel {
     font-size: 16px;
     display: inline-block;
+}
+
+.optionlabeltable {
+    font-size: 16px;
+    display: inline-block;
+    width: auto;
+    float: right;
+}
+
+.optiontextbox {
+    width: 100px;
 }
 
 form input#seed {

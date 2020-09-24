@@ -156,11 +156,10 @@ class ReusableForm(Form):
     seed = TextField("請輸入一個起始句子:", default="豬肉", validators=[validators.InputRequired()])
   
     # Configure GPT2
-    length = IntegerField("生成長度 (<=1024):", default=50, validators=[validators.InputRequired(), validators.NumberRange(-1, 1024)])
-    temperature = DecimalField("文章生成的隨機度 (0.1-3):", default=2, places=1, validators=[validators.InputRequired(), validators.NumberRange(0.1, 3)])
-    topk = IntegerField("前k大的機率頻繁詞抽樣:", default=12, validators=[validators.InputRequired()])
-    topp = DecimalField("前k大的累積機率頻繁詞抽樣:", default=3, validators=[validators.InputRequired()])
-    temperature = DecimalField("文章生成的隨機度 (0.1-3):", default=2, places=1, validators=[validators.InputRequired(), validators.NumberRange(0.1, 3)])
+    length = IntegerField("生成長度 (<=1024):", default=200, validators=[validators.InputRequired(), validators.NumberRange(-1, 1024)])
+    temperature = DecimalField("文章生成的隨機度 (0.1-3):", default=1.2, places=1, validators=[validators.InputRequired(), validators.NumberRange(0.1, 3)])
+    topk = IntegerField("前k大的機率頻繁詞抽樣:", default=50, validators=[validators.InputRequired()])
+    topp = DecimalField("前k大的累積機率頻繁詞抽樣:", default=0, validators=[validators.InputRequired()])
     fast_pattern = BooleanField("采用更加快的方式生成文本:", default=False)
     nsamples = IntegerRangeField('生成幾個樣本:', default=1)
     modelname = SelectField('模型', validators=[validators.InputRequired()])

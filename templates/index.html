@@ -15,61 +15,54 @@
     </h1>
 
     {% block content %}
-        {% for message in form.seed.errors %}
-            <div class="flash">{{ message }}</div>
-        {% endfor %}
+        {% for message in form.seed.errors %}<div class="flash">{{ message }}</div>{% endfor %}
 
         <form method=post>
             {{ form.seed.label }}
             {{ form.seed }}
+            <div class="row">
+                <p>設定</p>
 
-            <div>設定:</div>
+                <div class="column">
+                    {{ form.modelname.label(class_="optionlabel") }}
+                    {{ form.modelname }}
+                    {% for message in form.modelname.errors %}<div class="flash">{{ message }}</div>{% endfor %}
+                    <br>            
+                    {{ form.nsamples.label(class_="optionlabel") }}
+                    <span id=nsamplesValue></span>
+                    {{ form.nsamples(min=0, max=10, oninput="nsamplesChanged(value)") }}
+                    {% for message in form.nsamples.errors %}<div class="flash">{{ message }}</div>{% endfor %}
+                </div>
 
-            {{ form.modelname.label(class_="optionlabel") }}
-            {{ form.modelname }}
-            {% for message in form.modelname.errors %}
-                <div class="flash">{{ message }}</div>
-            {% endfor %}
-        <br>            
-            {{ form.length.label(class_="optionlabel") }}
-            {{ form.length }}
-            {% for message in form.length.errors %}
-                <div class="flash">{{ message }}</div>
-            {% endfor %}
-        <br>            
-            {{ form.temperature.label(class_="optionlabel") }}
-            {{ form.temperature }}
-            {% for message in form.temperature.errors %}
-                <div class="flash">{{ message }}</div>
-            {% endfor %}
-        <br>            
-            {{ form.topk.label(class_="optionlabel") }}
-            {{ form.topk }}
-            {% for message in form.topk.errors %}
-                <div class="flash">{{ message }}</div>
-            {% endfor %}
-        <br>            
-            {{ form.topp.label(class_="optionlabel") }}
-            {{ form.topp }}
-            {% for message in form.topp.errors %}
-                <div class="flash">{{ message }}</div>
-            {% endfor %}
-<!-- 
-        <br>
-            {{ form.fast_pattern.label(class_="optionlabel") }}
-            {{ form.fast_pattern }}
-            {% for message in form.fast_pattern.errors %}
-                <div class="flash">{{ message }}</div>
-            {% endfor %}
--->
-        <br>
-            {{ form.nsamples.label(class_="optionlabel") }}
-            <span id=nsamplesValue></span>
-            {{ form.nsamples(min=0, max=10, oninput="nsamplesChanged(value)") }}
-            {% for message in form.nsamples.errors %}
-                <div class="flash">{{ message }}</div>
-            {% endfor %}
-
+                <div class="column">
+                    <table>
+                    <tr>
+                        <td>{{ form.length.label(class_="optionlabeltable") }}</td>
+                        <td>{{ form.length(class_="optiontextbox") }}
+                            {% for message in form.length.errors %}<div class="flash">{{ message }}</div>{% endfor %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>{{ form.temperature.label(class_="optionlabeltable") }}</td>
+                        <td>{{ form.temperature(class_="optiontextbox") }}
+                            {% for message in form.temperature.errors %}<div class="flash">{{ message }}</div>{% endfor %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>{{ form.topk.label(class_="optionlabeltable") }}</td>
+                        <td>{{ form.topk(class_="optiontextbox") }}
+                            {% for message in form.topk.errors %}<div class="flash">{{ message }}</div>{% endfor %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>{{ form.topp.label(class_="optionlabeltable") }}</td>
+                        <td>{{ form.topp(class_="optiontextbox") }}
+                            {% for message in form.topp.errors %}<div class="flash">{{ message }}</div>{% endfor %}
+                        </td>
+                    </tr>
+                    </table>
+                </div>
+            </div>
             {{ form.submit }}
         </form>
     {% endblock %}

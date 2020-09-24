@@ -14,18 +14,39 @@
 </header>
 
 <body>
-{% block content %}
-    {% for sample in samples_list %}
-    <div class="container">
-        {{ sample|safe }}
+    <div id="samples">
+        <div id="samplesloading" class="container">
+            <img src="/static/images/spinner.gif" width=25 height=25>
+        </div>
     </div>
-    {% endfor %}
-{% endblock %}
 </body>
 <script>
-    (function() {
-        let text = `{{ samples_combined|safe }}`;
-        document.getElementById("downloadLink").setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-    })();
+    console.log("opening source");
+    var source = new EventSource("/progress?{{ query|safe }}");
+    var samplesForDownload = "";
+
+    source.onmessage = function(event) {
+        loadingElement = document.getElementById("samplesloading");
+        if (event.data.startsWith("[ALL SAMPLES GENERATED]")) {
+            console.log("closing source");
+            source.close();
+
+            loadingElement.remove();
+        } else {
+            sample = decodeURIComponent(event.data);
+            console.log("sample received:");
+            console.log(sample);
+
+            // Add new div to show the sample
+            samplediv = document.createElement('div');
+            samplediv.setAttribute('class', 'container');
+            samplediv.innerText = sample.split("\n").slice(1).join("\n");
+            document.getElementById("samples").insertBefore(samplediv, loadingElement);
+
+            // And add it to the text for downloading
+            samplesForDownload += sample + "\n";
+            document.getElementById("downloadLink").setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(samplesForDownload));
+        }
+    }
 </script>
 </html>

@@ -43,7 +43,9 @@ repetition_penalty = args.repetition_penalty
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 def findModels():
-    return [f.name for f in os.scandir('models') if f.is_dir() and checkModelDirectory(f.name)]
+    models = [f.name for f in os.scandir('models') if f.is_dir() and checkModelDirectory(f.name)]
+    models.sort()
+    return models
 
 def checkModelDirectory(modelname):
     if not os.path.exists(f'models/{modelname}/cache/vocab_processed.txt'):

@@ -154,7 +154,7 @@ modelname: {modelname}""")
 class ReusableForm(Form):
     """User entry form for entering specifics for generation"""
     # Starting seed
-    seed = TextField("請輸入一個起始句子:", default="豬肉", validators=[validators.InputRequired()])
+    seed = TextField("請輸入一個起始句子:", default="新冠病毒大進化，多名官員被傳染。", validators=[validators.InputRequired()])
   
     # Configure GPT2
     length = IntegerField("生成長度 (<=1024):", default=200, validators=[validators.InputRequired(), validators.NumberRange(-1, 1024)])

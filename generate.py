@@ -68,8 +68,7 @@ def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')
     return logits
 
 
-def sample_sequence(model, context, length, n_ctx, tokenizer, temperature=1.0, top_k=30, top_p=0.0, repitition_penalty=1.0,
-                    device='cpu'):
+def sample_sequence(model, context, length, n_ctx, tokenizer, temperature=1.0, top_k=30, top_p=0.0, repetition_penalty=1.0, device='cpu'):
     context = torch.tensor(context, dtype=torch.long, device=device)
     context = context.unsqueeze(0)
     generated = context
@@ -80,14 +79,13 @@ def sample_sequence(model, context, length, n_ctx, tokenizer, temperature=1.0, t
                 **inputs)  # Note: we could also use 'past' with GPT-2/Transfo-XL/XLNet (cached hidden-states)
             next_token_logits = outputs[0][0, -1, :]
             for id in set(generated):
-                next_token_logits[id] /= repitition_penalty
+                next_token_logits[id] /= repetition_penalty
             next_token_logits = next_token_logits / temperature
             next_token_logits[tokenizer.convert_tokens_to_ids('[UNK]')] = -float('Inf')
             filtered_logits = top_k_top_p_filtering(next_token_logits, top_k=top_k, top_p=top_p)
             next_token = torch.multinomial(F.softmax(filtered_logits, dim=-1), num_samples=1)
             generated = torch.cat((generated, next_token.unsqueeze(0)), dim=1)
-    return generated.tolist()[0]
-
+            yield next_token.item()
 
 def fast_sample_sequence(model, context, length, temperature=1.0, top_k=30, top_p=0.0, device='cpu'):
     inputs = torch.LongTensor(context).view(1, -1).to(device)
@@ -97,7 +95,6 @@ def fast_sample_sequence(model, context, length, temperature=1.0, top_k=30, top_
     else:
         past = None
         prev = inputs
-    generate = [] + context
     with torch.no_grad():
         for i in trange(length):
             output = model(prev, past=past)
@@ -105,20 +102,23 @@ def fast_sample_sequence(model, context, length, temperature=1.0, top_k=30, top_
             output = output[-1].squeeze(0) / temperature
             filtered_logits = top_k_top_p_filtering(output, top_k=top_k, top_p=top_p)
             next_token = torch.multinomial(torch.softmax(filtered_logits, dim=-1), num_samples=1)
-            generate.append(next_token.item())
+            yield next_token.item()
             prev = next_token.view(1, 1)
-    return generate
 
+# Used by run-server to send text to the browser as it's being generated
+def generate_stream(n_ctx, model, context, length, tokenizer, temperature=1, top_k=0, top_p=0.0, repetition_penalty=1.0, device='cpu', is_fast_pattern=False):
+    for x in context:
+        yield x
+    if is_fast_pattern:
+        for x in fast_sample_sequence(model, context, length, temperature=temperature, top_k=top_k, top_p=top_p, device=device):
+            yield x
+    else:
+        for x in sample_sequence(model, context, length, n_ctx, tokenizer=tokenizer, temperature=temperature, top_k=top_k, top_p=top_p, repetition_penalty=repetition_penalty, device=device):
+            yield x
 
 # 通过命令行参数--fast_pattern，指定模式
-def generate(n_ctx, model, context, length, tokenizer, temperature=1, top_k=0, top_p=0.0, repitition_penalty=1.0, device='cpu',
-             is_fast_pattern=False):
-    if is_fast_pattern:
-        return fast_sample_sequence(model, context, length, temperature=temperature, top_k=top_k, top_p=top_p,
-                                    device=device)
-    else:
-        return sample_sequence(model, context, length, n_ctx, tokenizer=tokenizer, temperature=temperature, top_k=top_k, top_p=top_p,
-                               repitition_penalty=repitition_penalty, device=device)
+def generate(n_ctx, model, context, length, tokenizer, temperature=1, top_k=0, top_p=0.0, repetition_penalty=1.0, device='cpu', is_fast_pattern=False):
+    return [x for x in generate_stream(n_ctx, model, context, length, tokenizer, temperature, top_k, top_p, repetition_penalty, device, is_fast_pattern)]
 
 
 def main():
@@ -186,7 +186,7 @@ def main():
                 context=context_tokens,
                 length=length,
                 is_fast_pattern=args.fast_pattern, tokenizer=tokenizer,
-                temperature=temperature, top_k=topk, top_p=topp, repitition_penalty=repetition_penalty, device=device
+                temperature=temperature, top_k=topk, top_p=topp, repetition_penalty=repetition_penalty, device=device
             )
             for i in range(batch_size):
                 generated += 1

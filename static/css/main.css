@@ -3,6 +3,11 @@ body {
     padding: 0;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     color: #444;
+
+    background-image: url('/static/images/twiscbackground-light.jpg');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
 }
 
 /* Create two equal columns that floats next to each other */
@@ -21,15 +26,13 @@ body {
   
 .container {
     text-align: center;
-    background-color: ivory;
+    background-color: #fafafa;
     width: 940px;
     border-width: 4px;
-    margin: 100px auto 0;
+    margin: 50px auto 0;
 }
 
 .container::before {
-    background-image: url('/static/images/background.jpg');
-    background-size: cover;
     content: "";
     display: block;
     position: absolute;
@@ -40,6 +43,11 @@ body {
     z-index: -2;
     opacity: 0.4;
 }
+
+.sample {
+    text-align: left !important;
+}
+
 
 div.jumbo {
     padding: 10px 0 30px 0;
@@ -103,7 +111,7 @@ li a:hover {
 
 form label {
     font-family: initial;
-    color: #A1BD83;
+    color: darkslategray;
     font-size: 26px;
     font-weight: bold;
     display: block;
@@ -164,40 +172,27 @@ form textarea#message {
 }
 
 form input#submit {
-    height: 80px;
-    width: 30%;
     margin: auto;
     display: -webkit-box;
     -webkit-border-radius: 3px;
     -moz-border-radius: 3px;
     border-radius: 10px;
     border: 1px solid #d8d8d8;
-    padding: 10px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    padding-left: 20px;
+    padding-right: 20px;
     font-weight: bold;
     font-size: 22px;
-    text-align: center;
+    text-align: center !important;
     color: #000000;
     background-color: #f4f4f4;
-    background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #f4f4f4), color-stop(100%, #e5e5e5));
-    background-image: -webkit-linear-gradient(top, #f4f4f4, #e5e5e5);
-    background-image: -moz-linear-gradient(top, #f4f4f4, #e5e5e5);
-    background-image: -ms-linear-gradient(top, #f4f4f4, #e5e5e5);
-    background-image: -o-linear-gradient(top, #f4f4f4, #e5e5e5);
-    background-image: linear-gradient(top, #f4f4f4, #e5e5e5);
-    filter: progid:DXImageTransform.Microsoft.gradient(GradientType=0, startColorstr=#f4f4f4, endColorstr=#e5e5e5);
 }
 
 form input#submit:hover {
     cursor: pointer;
     border: 1px solid #c1c1c1;
     background-color: #dbdbdb;
-    background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #dbdbdb), color-stop(100%, #cccccc));
-    background-image: -webkit-linear-gradient(top, #dbdbdb, #cccccc);
-    background-image: -moz-linear-gradient(top, #dbdbdb, #cccccc);
-    background-image: -ms-linear-gradient(top, #dbdbdb, #cccccc);
-    background-image: -o-linear-gradient(top, #dbdbdb, #cccccc);
-    background-image: linear-gradient(top, #dbdbdb, #cccccc);
-    filter: progid:DXImageTransform.Microsoft.gradient(GradientType=0, startColorstr=#dbdbdb, endColorstr=#cccccc);
 }
 
 /* Message flashing */
@@ -209,14 +204,6 @@ form input#submit:hover {
     margin: auto;
 }
 
-#TWISC_LOGO_DIV_INDEX {
-    top: 0px;
-    right: 0px;
-    padding:15px;
-    position:absolute;
-    -webkit-filter: invert(1);
-    filter: invert(1);
-}
 #TWISC_LOGO_DIV_SEED {
     top: 0px;
     right: 0px;

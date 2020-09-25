@@ -15,36 +15,61 @@
 
 <body>
     <div id="samples">
-        <div id="samplesloading" class="container">
-            <img src="/static/images/spinner.gif" width=25 height=25>
+        <div class="container">
+            <p id="currentSampleText" class="sample">載入中文模型....</p>
         </div>
+        <img id="spinner" src="/static/images/spinner.gif" width=35 height=35 style="margin-left: auto; margin-right: auto; display: block;">   
     </div>
 </body>
 <script>
-    console.log("opening source");
-    var source = new EventSource("/progress?{{ query|safe }}");
+    var sampleNumber = 0;
     var samplesForDownload = "";
+    var samplesListElement = document.getElementById("samples");
+    var currentSampleElement = document.getElementById('currentSampleText');
+    var spinnerElement = document.getElementById('spinner');
 
+    console.log("opening source....");
+    var source = new EventSource("/progress?{{ query|safe }}");
     source.onmessage = function(event) {
-        loadingElement = document.getElementById("samplesloading");
         if (event.data.startsWith("[ALL SAMPLES GENERATED]")) {
+            // All samples received. Close the connection and remove the spinner.
             console.log("closing source");
             source.close();
 
-            loadingElement.remove();
-        } else {
-            sample = decodeURIComponent(event.data);
-            console.log("sample received:");
-            console.log(sample);
+            spinnerElement.remove();
+        } else if (event.data.startsWith("[SAMPLE]")) {
+            // New sample starting.
+            console.log("starting new sample");
+            sampleNumber++;
 
-            // Add new div to show the sample
-            samplediv = document.createElement('div');
-            samplediv.setAttribute('class', 'container');
-            samplediv.innerText = sample.split("\n").slice(1).join("\n");
-            document.getElementById("samples").insertBefore(samplediv, loadingElement);
+            // Add new div to show the sample (for the first sample we already have a div)
+            if (sampleNumber == 1) {
+                currentSampleElement.innerText = ""; // clear the "載入中文模型...." text.
+            } else {
+                samplediv = document.createElement('div');
+                samplediv.setAttribute('class', 'container');
+                samplesListElement.insertBefore(samplediv, spinnerElement);
+                currentSampleElement = document.createElement('p');
+                currentSampleElement.setAttribute('class', 'sample');
+                samplediv.appendChild(currentSampleElement);
+            }
+
+            // Add text to the download string
+            if (sampleNumber > 1) {
+                samplesForDownload += '\n'
+            }
+            samplesForDownload += `======================================== SAMPLE ${sampleNumber} ========================================\n`
+            document.getElementById("downloadLink").setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(samplesForDownload));
+        } else {
+            // Received the next token for the current sample
+            token = decodeURIComponent(event.data);
+            // console.log(token);
+
+            // Add it to the current sample element
+            currentSampleElement.innerText += token;
 
             // And add it to the text for downloading
-            samplesForDownload += sample + "\n";
+            samplesForDownload += token;
             document.getElementById("downloadLink").setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(samplesForDownload));
         }
     }

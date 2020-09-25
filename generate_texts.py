@@ -70,7 +70,7 @@ def top_k_top_p_filtering(logits, top_k=0, top_p=0.0, filter_value=-float('Inf')
     return logits
 
 
-def sample_sequence(model, context, length, n_ctx, tokenizer, temperature=1.0, top_k=30, top_p=0.0, repitition_penalty=1.0,
+def sample_sequence(model, context, length, n_ctx, tokenizer, temperature=1.0, top_k=30, top_p=0.0, repetition_penalty=1.0,
                     device='cpu'):
     context = torch.tensor(context, dtype=torch.long, device=device)
     context = context.unsqueeze(0)
@@ -82,7 +82,7 @@ def sample_sequence(model, context, length, n_ctx, tokenizer, temperature=1.0, t
                 **inputs)  # Note: we could also use 'past' with GPT-2/Transfo-XL/XLNet (cached hidden-states)
             next_token_logits = outputs[0][0, -1, :]
             for id in set(generated):
-                next_token_logits[id] /= repitition_penalty
+                next_token_logits[id] /= repetition_penalty
             next_token_logits = next_token_logits / temperature
             next_token_logits[tokenizer.convert_tokens_to_ids('[UNK]')] = -float('Inf')
             filtered_logits = top_k_top_p_filtering(next_token_logits, top_k=top_k, top_p=top_p)
@@ -156,7 +156,7 @@ def main():
                     n_ctx=n_ctx,
                     model=model, length=length,
                     context=context_tokens, tokenizer=tokenizer,
-                    temperature=temperature, top_k=topk, top_p=topp, repitition_penalty=repetition_penalty,
+                    temperature=temperature, top_k=topk, top_p=topp, repetition_penalty=repetition_penalty,
                     device=device
                 )
                 out = out.tolist()[0]

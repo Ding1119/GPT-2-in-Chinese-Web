@@ -6,13 +6,20 @@
     <link rel="stylesheet" href="/static/css/main.css">
 </head>
 
+<header>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <ul>
+        <li><a>&nbsp;</a></li>
+        <a href="https://www.twisc.org" id="TWISC_LOGO_DIV_SEED">
+            <img src="/static/images/twisc.png" alt="twisc-logo" width=90 height=25>
+        </a>
+    </ul>
+</header>
+
 <body>
 
 <div class="container">
 <div style="position: relative;">
-    <a href="https://www.twisc.org" id="TWISC_LOGO_DIV_INDEX">
-        <img src="/static/images/twisc.png" alt="twisc-logo" width=108 height=30>
-    </a>
     <h1>
         GPT-2 假新聞生成器
     </h1>
@@ -24,7 +31,7 @@
             {{ form.seed.label }}
             {{ form.seed }}
             <div class="row">
-                <p>設定</p>
+                <label>設定</label>
 
                 <div class="column">
                     {{ form.modelname.label(class_="optionlabel") }}

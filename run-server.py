@@ -120,34 +120,35 @@ modelname: {modelname}""")
     raw_text = seed
     context_tokens = tokenizer.convert_tokens_to_ids(tokenizer.tokenize(raw_text))
     generated = 0
+    prev_is_word = False
     for _ in range(nsamples):
-        out = generate.generate(
-            n_ctx=n_ctx,
-            model=model,
-            context=context_tokens,
-            length=length,
-            is_fast_pattern=fast_pattern, tokenizer=tokenizer,
-            temperature=temperature, top_k=topk, top_p=topp, repitition_penalty=repetition_penalty, device=device
-        )
+        text = '' # This is only here so we can show the generated text in the log, but not used for the website.
+        yield "[SAMPLE]"
+        for token_id in generate.generate_stream(
+                n_ctx=n_ctx,
+                model=model,
+                context=context_tokens,
+                length=length,
+                is_fast_pattern=fast_pattern, tokenizer=tokenizer,
+                temperature=temperature, top_k=topk, top_p=topp, repetition_penalty=repetition_penalty, device=device):
+            token = tokenizer.convert_ids_to_tokens(token_id)
+            if prev_is_word and generate.is_word(token): # 确保英文前后有空格
+                token = ' ' + token
+            prev_is_word = generate.is_word(token)
 
-        generated += 1
-        text = tokenizer.convert_ids_to_tokens(out)
-        for i, item in enumerate(text[:-1]):  # 确保英文前后有空格
-            if generate.is_word(item) and generate.is_word(text[i + 1]):
-                text[i] = item + ' '
-        for i, item in enumerate(text):
-            if item == '[MASK]':
-                text[i] = ''
-            elif item == '[CLS]':
-                text[i] = '\n\n'
-            elif item == '[SEP]':
-                text[i] = '\n'
-        info = "=" * 40 + " SAMPLE " + str(generated) + " " + "=" * 40 + "\n"
-        app.logger.info(info)
-        text = ''.join(text).replace('##', '').strip()
+            if token == '[MASK]':
+                token = ''
+            elif token == '[CLS]':
+                token = '\n\n'
+            elif token == '[SEP]':
+                token = '\n'
+            text += token
+            yield urllib.parse.quote(token)
+ 
+        generated += 1 
+        app.logger.info("=" * 40 + " SAMPLE " + str(generated) + " " + "=" * 40 + "\n")
         app.logger.info(text)
-
-        yield info + text
+    yield "[ALL SAMPLES GENERATED]"
 
 
 class ReusableForm(Form):
@@ -188,7 +189,7 @@ def progress():
 
     def generate():
         # Generate a random sequence
-        for sample in text_generator(seed=seed,
+        for x in text_generator(seed=seed,
                                      length=length,
                                      temperature=temperature,
                                      topk=topk,
@@ -196,8 +197,7 @@ def progress():
                                      fast_pattern=fast_pattern,
                                      nsamples=nsamples,
                                      modelname=modelname):
-            yield "data:" + urllib.parse.quote(sample) + "\n\n"
-        yield "data:[ALL SAMPLES GENERATED]\n\n"
+            yield f"data:{x}\n\n"
     return Response(generate(), mimetype= 'text/event-stream')
 
 # Home page
@@ -227,5 +227,3 @@ if __name__ == "__main__":
  
     # Run app
     app.run(host="0.0.0.0", port=8000)
-
-    # print(text_generator('豬肉')[0])
